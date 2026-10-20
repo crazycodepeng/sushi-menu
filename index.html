@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>寿司菜单</title>
+<style>
+  :root { color-scheme: light; --bg:#f6ecdd; --card:#fffaf4; --ink:#2a1c12; --price:#943026; --gold:#b0844a; --line:#eadcc8; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font-family:"PingFang SC","Microsoft YaHei",sans-serif; padding-bottom:128px; }
+  header { position:sticky; top:0; z-index:5; background:rgba(246,236,220,.94); backdrop-filter:blur(8px); padding:14px 16px 10px; border-bottom:1px solid var(--line); }
+  h1 { margin:0; font-size:22px; letter-spacing:.08em; }
+  .sub { margin:4px 0 10px; color:#6e543c; font-size:13px; }
+  .cats { display:flex; gap:8px; overflow:auto; padding-bottom:2px; }
+  .cats button { border:1px solid var(--gold); background:transparent; color:var(--ink); border-radius:999px; padding:6px 12px; font-size:14px; white-space:nowrap; }
+  .cats button.on { background:var(--ink); color:#fffaf4; border-color:var(--ink); }
+  main { padding:12px; display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .card { background:var(--card); border-radius:16px; overflow:hidden; box-shadow:0 6px 16px rgba(90,60,30,.08); }
+  .pic { aspect-ratio:1/1; background:#efe4d4; }
+  .pic img { width:100%; height:100%; object-fit:cover; display:block; }
+  .meta { padding:8px 10px 10px; }
+  .name { font-size:16px; font-weight:700; line-height:1.3; min-height:42px; }
+  .price { color:var(--price); font-size:15px; margin-top:2px; }
+  .step { display:flex; align-items:center; justify-content:space-between; margin-top:8px; }
+  .step button { width:36px; height:36px; border-radius:50%; border:1px solid var(--gold); background:#fff; color:var(--ink); font-size:22px; line-height:1; }
+  .qty { min-width:22px; text-align:center; font-weight:700; }
+  .bar { position:fixed; left:0; right:0; bottom:0; background:#fffaf4; border-top:1px solid var(--line); padding:10px 12px calc(10px + env(safe-area-inset-bottom)); display:flex; gap:10px; align-items:center; }
+  .sum { flex:1; font-size:14px; line-height:1.35; }
+  .sum b { font-size:18px; color:var(--price); }
+  .go { border:0; background:#3a2016; color:#fff8f0; border-radius:12px; padding:12px 16px; font-size:16px; }
+  .sheet { position:fixed; inset:0; background:rgba(42,28,18,.45); display:none; align-items:flex-end; z-index:9; }
+  .sheet.on { display:flex; }
+  .panel { background:#fffaf4; width:100%; border-radius:18px 18px 0 0; padding:16px 16px calc(16px + env(safe-area-inset-bottom)); }
+  textarea { width:100%; min-height:180px; border:1px solid var(--line); border-radius:12px; padding:12px; font-size:16px; font-family:inherit; }
+  .row { display:flex; gap:8px; margin-top:10px; }
+  .row button { flex:1; border-radius:12px; padding:12px; font-size:16px; }
+  .ghost { background:#fff; border:1px solid var(--gold); }
+  .solid { background:#3a2016; color:#fff8f0; border:0; }
+</style>
+</head>
+<body>
+<header>
+  <h1>寿司菜单</h1>
+  <div class="sub">选好后复制文字，发给店家</div>
+  <div class="cats" id="cats"></div>
+</header>
+<main id="list"></main>
+<div class="bar">
+  <div class="sum">已选 <b id="count">0</b> 件<br>合计 <b id="total">0元</b></div>
+  <button class="go" id="open">生成点单</button>
+</div>
+<div class="sheet" id="sheet">
+  <div class="panel">
+    <textarea id="order" readonly></textarea>
+    <div class="row">
+      <button class="ghost" id="close">返回</button>
+      <button class="solid" id="copy">复制点单</button>
+    </div>
+  </div>
+</div>
+<script>
+const ITEMS = [{"name": "海草军舰", "price": "1元1个", "yuan": 1, "category": "军舰", "img": "img/海草军舰.jpg"}, {"name": "火鸡面军舰", "price": "1元1个", "yuan": 1, "category": "军舰", "img": "img/火鸡面军舰.jpg"}, {"name": "炸酱面军舰", "price": "1元1个", "yuan": 1, "category": "军舰", "img": "img/炸酱面军舰.jpg"}, {"name": "玉米粒军舰", "price": "1元1个", "yuan": 1, "category": "军舰", "img": "img/玉米粒军舰.jpg"}, {"name": "蟹柳军舰", "price": "1元1个", "yuan": 1, "category": "军舰", "img": "img/蟹柳军舰.jpg"}, {"name": "金针菇军舰", "price": "1元1个", "yuan": 1, "category": "军舰", "img": "img/金针菇军舰.jpg"}, {"name": "鸡排军舰", "price": "1元1个", "yuan": 1, "category": "军舰", "img": "img/鸡排军舰.jpg"}, {"name": "爆汁烤肠玉米军舰", "price": "2元1个", "yuan": 2, "category": "军舰", "img": "img/爆汁烤肠玉米军舰.jpg"}, {"name": "牛板筋军舰", "price": "2元1个", "yuan": 2, "category": "军舰", "img": "img/牛板筋军舰.jpg"}, {"name": "红鱼籽军舰", "price": "2元1个", "yuan": 2, "category": "军舰", "img": "img/红鱼籽军舰.jpg"}, {"name": "肉松咸蛋黄军舰", "price": "2元1个", "yuan": 2, "category": "军舰", "img": "img/肉松咸蛋黄军舰.jpg"}, {"name": "芥末鱼籽军舰", "price": "2元1个", "yuan": 2, "category": "军舰", "img": "img/芥末鱼籽军舰.jpg"}, {"name": "金枪鱼军舰", "price": "2元1个", "yuan": 2, "category": "军舰", "img": "img/金枪鱼军舰.jpg"}, {"name": "原味卷", "price": "1元1片", "yuan": 1, "category": "卷", "img": "img/原味卷.jpg"}, {"name": "樱花卷", "price": "1元1个", "yuan": 1, "category": "卷", "img": "img/樱花卷.jpg"}, {"name": "海草卷", "price": "1元1个", "yuan": 1, "category": "卷", "img": "img/海草卷.jpg"}, {"name": "芝士鸡排卷", "price": "1元1个", "yuan": 1, "category": "卷", "img": "img/芝士鸡排卷.jpg"}, {"name": "蟹棒卷", "price": "1元1个", "yuan": 1, "category": "卷", "img": "img/蟹棒卷.jpg"}, {"name": "辣片卷", "price": "1元1个", "yuan": 1, "category": "卷", "img": "img/辣片卷.jpg"}, {"name": "金针菇卷", "price": "1元1个", "yuan": 1, "category": "卷", "img": "img/金针菇卷.jpg"}, {"name": "鱼子酱卷", "price": "1元1个", "yuan": 1, "category": "卷", "img": "img/鱼子酱卷.jpg"}, {"name": "黄金鸡排卷", "price": "1元1片", "yuan": 1, "category": "卷", "img": "img/黄金鸡排卷.jpg"}, {"name": "泰迪卷", "price": "2元1个", "yuan": 2, "category": "卷", "img": "img/泰迪卷.jpg"}, {"name": "培根手握", "price": "1元1个", "yuan": 1, "category": "手握", "img": "img/培根手握.jpg"}, {"name": "烤肠手握", "price": "1元1个", "yuan": 1, "category": "手握", "img": "img/烤肠手握.jpg"}, {"name": "鸡排手握", "price": "1元1个", "yuan": 1, "category": "手握", "img": "img/鸡排手握.jpg"}, {"name": "饭团", "price": "1元1个", "yuan": 1, "category": "饭团", "img": "img/饭团.jpg"}, {"name": "洋葱圈饭团", "price": "2元1个", "yuan": 2, "category": "饭团", "img": "img/洋葱圈饭团.jpg"}, {"name": "春卷火鸡面", "price": "2元1个", "yuan": 2, "category": "小食", "img": "img/春卷火鸡面.jpg"}, {"name": "火鸡面福袋", "price": "3元1个", "yuan": 3, "category": "小食", "img": "img/火鸡面福袋.jpg"}];
+const qty = {};
+let cat = "全部";
+const cats = ["全部", "军舰", "卷", "手握", "饭团", "小食", "1元", "2元", "3元"];
+const catsEl = document.getElementById("cats");
+const listEl = document.getElementById("list");
+function shown() {
+  if (cat === "全部") return ITEMS;
+  if (cat.endsWith("元")) return ITEMS.filter(i => i.yuan === Number(cat[0]));
+  return ITEMS.filter(i => i.category === cat);
+}
+function renderCats() {
+  catsEl.innerHTML = cats.map(c => `<button data-c="${c}" class="${c===cat?"on":""}">${c}</button>`).join("");
+}
+function renderList() {
+  listEl.innerHTML = shown().map(i => `
+    <article class="card">
+      <div class="pic"><img src="${i.img}" alt="${i.name}"></div>
+      <div class="meta">
+        <div class="name">${i.name}</div>
+        <div class="price">${i.price}</div>
+        <div class="step">
+          <button data-d="-1" data-name="${i.name}" aria-label="减少">−</button>
+          <span class="qty">${qty[i.name]||0}</span>
+          <button data-d="1" data-name="${i.name}" aria-label="增加">+</button>
+        </div>
+      </div>
+    </article>`).join("");
+  let count = 0, total = 0;
+  ITEMS.forEach(i => { const n = qty[i.name]||0; count += n; total += n * i.yuan; });
+  document.getElementById("count").textContent = count;
+  document.getElementById("total").textContent = total + "元";
+}
+catsEl.addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  cat = b.dataset.c; renderCats(); renderList();
+});
+listEl.addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  const name = b.dataset.name;
+  qty[name] = Math.max(0, (qty[name]||0) + Number(b.dataset.d));
+  renderList();
+});
+function orderText() {
+  const lines = ["点单"];
+  let total = 0;
+  ITEMS.forEach(i => {
+    const n = qty[i.name]||0;
+    if (!n) return;
+    lines.push(`${i.name} ×${n}`);
+    total += n * i.yuan;
+  });
+  if (lines.length === 1) lines.push("还没有选择");
+  else lines.push(`合计 ${total}元`);
+  return lines.join("\n");
+}
+document.getElementById("open").onclick = () => {
+  document.getElementById("order").value = orderText();
+  document.getElementById("sheet").classList.add("on");
+  const box = document.getElementById("order");
+  box.focus(); box.select();
+};
+document.getElementById("close").onclick = () => document.getElementById("sheet").classList.remove("on");
+document.getElementById("copy").onclick = async () => {
+  const text = document.getElementById("order").value;
+  const box = document.getElementById("order");
+  box.focus(); box.select();
+  let ok = false;
+  try { ok = document.execCommand("copy"); } catch (e) {}
+  if (!ok && navigator.clipboard) {
+    try { await navigator.clipboard.writeText(text); ok = true; } catch (e) {}
+  }
+  document.getElementById("copy").textContent = ok ? "已复制" : "请长按文字复制";
+  setTimeout(() => { document.getElementById("copy").textContent = "复制点单"; }, 1600);
+};
+renderCats(); renderList();
+</script>
+</body>
+</html>
